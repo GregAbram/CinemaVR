@@ -97,7 +97,6 @@ public class CinemaTime : MonoBehaviour
         toggleGroup = buttonBox.GetComponent<ToggleGroup>();
         numberOfTimesteps = Int32.Parse(list[0]);
 
-        if (1 == 1)
         foreach (string dset in list[1..^0])
         {
             GameObject go = Instantiate(datasetPrefab);
