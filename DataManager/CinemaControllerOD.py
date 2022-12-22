@@ -7,6 +7,9 @@ from select import select
 import threading
 import time
 
+from CinemaDB import DB
+
+
 HOST = "127.0.0.1"
 DATAPORT = 1900
 REQUESTPORT = 1901
@@ -29,20 +32,24 @@ if len(sys.argv) == 1:
 
 max_timesteps = int(sys.argv[1])
 
-dataset_names = glob('*.db')
-info = ','.join([str(max_timesteps)] + dataset_names)
-b = bytes(info, 'utf-8')
-print("ready... info =", info, b)
+if 1 == 0:
+        dataset_names = glob('*.db')
+        info = ','.join([str(max_timesteps)] + dataset_names)
+        b = bytes(info, 'utf-8')
+        print("ready... info =", info, b)
+else:
+        with open('desc.json') as f:
+          info = f.read()
+        
 
-def LoadTimestep(dset, tstep):
-    timestep_dir = '%s/timestep_%04d*' % (dset, tstep)
-    print("timestep_dir", timestep_dir)
-    keyfiles = glob('%s/*.dat' % timestep_dir)
+def LoadDataset(dset):
+    keyfiles = glob('%s/*.dat' % dset)
+    print(keyfiles)
     timestep = {}
     for keyfile in keyfiles:
+      print(keyfile)
       with open(keyfile, 'rb') as f:
-        timestep[keyfile.split('/')[-1][:-4]] = f.read()
-    print(dset, tstep, timestep.keys())
+        timestep[keyfile.split('\\')[-1][:-4]] = f.read()
     return timestep
 
 def SendUpdate():
@@ -85,10 +92,12 @@ lock = threading.Lock()
 value = 0
 
 def listener():
+  db = DB()
   server = socket(AF_INET, SOCK_STREAM)
   server.setblocking(0)
   server.bind((HOST, REQUESTPORT))
   server.listen()
+  print("Ready")
   while True:
     sleep(0.10)
     with lock:
@@ -104,10 +113,17 @@ def listener():
             print("INFO REQUEST!")
             conn.sendall(bytes(info, 'utf-8'))
           else:
-            current_dset,s = bin.decode("utf-8").split(':')
-            current_tstep = int(s)
-            print(current_dset, current_tstep)
             conn.sendall(b'ok')
+            msg = bin.decode("utf-8")
+            print(msg)
+            msg = eval(msg)
+            # current_dset,s = bin.decode("utf-8").split(':')
+            # current_tstep = int(s)
+            # print(current_dset, current_tstep)
+            dset = db.find((msg["time"], msg["angle"], msg["face"]))
+            print(dset)
+            data = LoadDataset(dset)
+            SendTimestep(data)
 
 x = threading.Thread(target=listener)
 x.start()
